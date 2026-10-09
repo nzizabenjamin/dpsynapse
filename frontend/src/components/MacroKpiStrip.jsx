@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Boxes, 
   Clock, 
@@ -6,16 +6,25 @@ import {
   ShieldCheck, 
   AlertTriangle,
   ArrowRight,
-  Filter
+  Maximize2,
+  Filter,
+  ArrowDown
 } from 'lucide-react';
 import LogisticsTermTooltip from './LogisticsTermTooltip';
 
-export default function MacroKpiStrip({ kpi, loading, onQuickFilter }) {
+export default function MacroKpiStrip({ 
+  kpi, 
+  loading, 
+  onQuickFilter,
+  onNavigateToSection,
+  activeFilterKey,
+  onExpandKpi
+}) {
   if (loading || !kpi) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="bg-white border border-slate-200 p-4 rounded-md animate-pulse h-32 flex flex-col justify-between shadow-xs">
+          <div key={i} className="bg-white border border-slate-200 p-4 rounded-md animate-pulse h-36 flex flex-col justify-between shadow-xs">
             <div className="h-3.5 bg-slate-200 rounded w-1/2"></div>
             <div className="h-7 bg-slate-200 rounded w-3/4"></div>
             <div className="h-3 bg-slate-200 rounded w-1/3"></div>
@@ -25,7 +34,7 @@ export default function MacroKpiStrip({ kpi, loading, onQuickFilter }) {
     );
   }
 
-  const freeYardTeu = Math.max(0, 4870 - (kpi.currentYardTeu || 3260));
+  const freeYardTeu = Math.max(0, (kpi.totalYardCapacityTeu || 4870) - (kpi.currentYardTeu || 3260));
 
   const cards = [
     {
@@ -36,8 +45,9 @@ export default function MacroKpiStrip({ kpi, loading, onQuickFilter }) {
       value: kpi.totalTeuThroughput?.toLocaleString() || '0',
       unit: 'TEUs',
       plainContext: `${kpi.dailyTeuInbound || 0} Inbound • ${kpi.dailyTeuOutbound || 0} Outbound`,
-      actionHint: 'View all active shipments',
-      filterAction: () => onQuickFilter && onQuickFilter({ channel: '', stage: '', quickTab: 'ALL' }),
+      targetSectionId: 'customs-matrix',
+      targetLabel: 'Shipments Manifest',
+      filterPayload: { channel: '', stage: '', quickTab: 'ALL' },
       icon: Boxes,
       color: 'blue',
       badge: 'Flow: Optimal (On Schedule)',
@@ -51,8 +61,9 @@ export default function MacroKpiStrip({ kpi, loading, onQuickFilter }) {
       value: kpi.avgTruckTurnaroundMins ? `${kpi.avgTruckTurnaroundMins}` : '--',
       unit: 'mins',
       plainContext: `Average truck departs in ${kpi.avgTruckTurnaroundMins || 42}m (SLA < 45m)`,
-      actionHint: 'Inspect fleet corridor transit',
-      filterAction: () => onQuickFilter && onQuickFilter({ stage: 'CORRIDOR_TRANSIT', quickTab: 'TRANSIT' }),
+      targetSectionId: 'fleet-radar',
+      targetLabel: 'Corridor Fleet Radar',
+      filterPayload: { stage: 'CORRIDOR_TRANSIT', quickTab: 'TRANSIT' },
       icon: Clock,
       color: kpi.isTurnaroundOnTarget ? 'emerald' : 'amber',
       badge: kpi.isTurnaroundOnTarget ? 'Target Met (<45m)' : 'Attention: SLA Delay',
@@ -66,8 +77,9 @@ export default function MacroKpiStrip({ kpi, loading, onQuickFilter }) {
       value: `${kpi.overallYardUtilizationPct || 0}%`,
       unit: 'occupied',
       plainContext: `${freeYardTeu.toLocaleString()} TEU slots available for intake`,
-      actionHint: 'Filter to warehouse stored cargo',
-      filterAction: () => onQuickFilter && onQuickFilter({ stage: 'WAREHOUSE_STORED', quickTab: 'STORED' }),
+      targetSectionId: 'zone-matrix',
+      targetLabel: 'Storage & Yard Matrix',
+      filterPayload: { stage: 'WAREHOUSE_STORED', quickTab: 'STORED' },
       icon: Layers,
       color: (kpi.overallYardUtilizationPct || 0) > 80 ? 'amber' : 'blue',
       badge: (kpi.overallYardUtilizationPct || 0) > 85 ? 'Heavy Density' : (kpi.overallYardUtilizationPct || 0) > 75 ? 'Moderate Density' : 'Optimal Capacity',
@@ -82,8 +94,9 @@ export default function MacroKpiStrip({ kpi, loading, onQuickFilter }) {
       value: `${kpi.customsClearanceRatePct || 0}%`,
       unit: 'cleared',
       plainContext: `${(kpi.customsChannelCounts?.GREEN || 0) + (kpi.customsChannelCounts?.BLUE || 0)} Fast-track • ${kpi.customsChannelCounts?.RED || 0} In Inspection`,
-      actionHint: 'Filter to Red Channel scans',
-      filterAction: () => onQuickFilter && onQuickFilter({ channel: 'RED', quickTab: 'ACTION_REQUIRED' }),
+      targetSectionId: 'customs-matrix',
+      targetLabel: 'Customs Matrix',
+      filterPayload: { channel: 'RED', quickTab: 'ACTION_REQUIRED' },
       icon: ShieldCheck,
       color: 'emerald',
       badge: 'SCT Fast-Track Active',
@@ -97,8 +110,9 @@ export default function MacroKpiStrip({ kpi, loading, onQuickFilter }) {
       value: kpi.activeBottlenecksCount?.toString() || '0',
       unit: 'issues',
       plainContext: `${kpi.criticalAlertsCount || 0} Priority issues require attention`,
-      actionHint: 'Filter to delayed cargo',
-      filterAction: () => onQuickFilter && onQuickFilter({ stage: 'INSPECTION_BAY', quickTab: 'ACTION_REQUIRED' }),
+      targetSectionId: 'bottlenecks-center',
+      targetLabel: 'Bottleneck Incidents',
+      filterPayload: { stage: 'INSPECTION_BAY', quickTab: 'ACTION_REQUIRED' },
       icon: AlertTriangle,
       color: kpi.activeBottlenecksCount > 0 ? 'rose' : 'emerald',
       badge: kpi.activeBottlenecksCount > 0 ? 'Action Required' : 'All Terminals Clear',
@@ -106,18 +120,39 @@ export default function MacroKpiStrip({ kpi, loading, onQuickFilter }) {
     }
   ];
 
+  const handleCardClick = (card) => {
+    if (onExpandKpi) {
+      onExpandKpi(card.id);
+    }
+  };
+
+  const handleFilterAndJump = (e, card) => {
+    e.stopPropagation();
+    if (onNavigateToSection) {
+      onNavigateToSection(card.filterPayload, card.targetSectionId, card.title);
+    } else if (onQuickFilter) {
+      onQuickFilter(card.filterPayload);
+    }
+  };
+
   return (
-    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5" id="macro-kpi">
       {cards.map((card) => {
         const Icon = card.icon;
+        const isCurrentActive = activeFilterKey === card.id;
+
         return (
           <div 
             key={card.id} 
-            onClick={card.filterAction}
+            onClick={() => handleCardClick(card)}
             role="button"
             tabIndex={0}
-            title={`Click to filter table: ${card.actionHint}`}
-            className="bg-white border border-slate-200 hover:border-[#004B87] hover:shadow-md p-4 rounded-md relative flex flex-col justify-between shadow-xs transition group cursor-pointer text-left"
+            title="Click card to expand deep-dive analytics or use buttons below"
+            className={`bg-white border rounded-md p-4 relative flex flex-col justify-between shadow-xs transition group cursor-pointer text-left hover:shadow-md ${
+              isCurrentActive 
+                ? 'border-[#004B87] ring-2 ring-[#004B87]/20 bg-blue-50/20' 
+                : 'border-slate-200 hover:border-[#004B87]'
+            }`}
           >
             {/* Header */}
             <div>
@@ -130,13 +165,18 @@ export default function MacroKpiStrip({ kpi, loading, onQuickFilter }) {
                     </LogisticsTermTooltip>
                   )}
                 </span>
-                <div className={`p-1.5 rounded-md ${
-                  card.color === 'blue' ? 'bg-blue-50 text-[#004B87]' :
-                  card.color === 'emerald' ? 'bg-emerald-50 text-emerald-700' :
-                  card.color === 'amber' ? 'bg-amber-50 text-amber-700' :
-                  'bg-rose-50 text-rose-700'
-                }`}>
-                  <Icon className="w-4 h-4" />
+                <div className="flex items-center gap-1">
+                  <span className="text-slate-400 group-hover:text-[#004B87] transition p-0.5" title="Expand metric details">
+                    <Maximize2 className="w-3.5 h-3.5" />
+                  </span>
+                  <div className={`p-1.5 rounded-md ${
+                    card.color === 'blue' ? 'bg-blue-50 text-[#004B87]' :
+                    card.color === 'emerald' ? 'bg-emerald-50 text-emerald-700' :
+                    card.color === 'amber' ? 'bg-amber-50 text-amber-700' :
+                    'bg-rose-50 text-rose-700'
+                  }`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
                 </div>
               </div>
 
@@ -168,15 +208,27 @@ export default function MacroKpiStrip({ kpi, loading, onQuickFilter }) {
               </p>
             </div>
 
-            {/* Bottom Status & Drill-Down Trigger */}
-            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100 mt-2.5">
-              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${card.badgeStyle}`}>
-                {card.badge}
-              </span>
-              <span className="text-[11px] text-[#004B87] font-semibold flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition">
-                <span>Filter</span>
-                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition" />
-              </span>
+            {/* Bottom Status & Dual Interactive Triggers */}
+            <div className="pt-2 border-t border-slate-100 mt-2.5 space-y-1.5">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className={`px-1.5 py-0.5 rounded font-semibold border ${card.badgeStyle}`}>
+                  {card.badge}
+                </span>
+                <span className="text-slate-400 group-hover:text-[#004B87] font-semibold text-[11px] flex items-center gap-0.5">
+                  <span>Expand</span>
+                  <Maximize2 className="w-2.5 h-2.5" />
+                </span>
+              </div>
+
+              {/* One-Click Filter & Jump Button */}
+              <button
+                type="button"
+                onClick={(e) => handleFilterAndJump(e, card)}
+                className="w-full py-1 px-2 rounded bg-slate-50 hover:bg-[#004B87] text-slate-700 hover:text-white border border-slate-200 hover:border-[#004B87] text-[10px] font-bold transition flex items-center justify-center gap-1 shadow-2xs group/btn"
+              >
+                <Filter className="w-3 h-3 text-[#004B87] group-hover/btn:text-white transition" />
+                <span>Filter & Jump to {card.targetLabel} &darr;</span>
+              </button>
             </div>
           </div>
         );
@@ -184,5 +236,3 @@ export default function MacroKpiStrip({ kpi, loading, onQuickFilter }) {
     </section>
   );
 }
-
-
