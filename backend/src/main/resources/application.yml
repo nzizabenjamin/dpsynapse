@@ -1,0 +1,90 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: dpworld-synapse-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:postgres}
+  jackson:
+    property-naming-strategy: LOWER_CAMEL_CASE
+    serialization:
+      write-dates-as-timestamps: false
+
+# AI Intelligence Microservice Connector Configuration
+ai:
+  service:
+    url: ${AI_SERVICE_URL:http://localhost:8000}
+    timeout-seconds: 30
+
+# OpenAPI Swagger Documentation
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+
+logging:
+  level:
+    root: INFO
+    com.dpworld.synapse: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+
+---
+# -----------------------------------------------------------------------------
+# Profile: local (Zero-configuration embedded DB with PostgreSQL dialect)
+# Runs out-of-the-box in IDE or command line with full seed data & Swagger UI
+# -----------------------------------------------------------------------------
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:h2:mem:dpsynapse;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+---
+# -----------------------------------------------------------------------------
+# Profile: postgres (Production / Local Dedicated PostgreSQL Database)
+# Set SPRING_PROFILES_ACTIVE=postgres and configure your credentials
+# -----------------------------------------------------------------------------
+spring:
+  config:
+    activate:
+      on-profile: postgres
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/dpsynapse}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 5000
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          lob:
+            non_contextual_creation: true
