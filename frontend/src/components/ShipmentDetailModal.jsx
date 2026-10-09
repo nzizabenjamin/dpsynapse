@@ -9,7 +9,8 @@ import {
   Printer,
   Send,
   HelpCircle,
-  FileCheck
+  FileCheck,
+  CheckCircle2
 } from 'lucide-react';
 import LogisticsTermTooltip from './LogisticsTermTooltip';
 
@@ -18,7 +19,7 @@ export default function ShipmentDetailModal({ shipment, onClose, onTriggerAction
 
   const getChannelBadge = (ch) => {
     switch (ch) {
-      case 'GREEN': return { text: 'Green Channel (Fast-Track)', style: 'bg-emerald-50 text-emerald-800 border-emerald-200', term: 'GREEN CHANNEL' };
+      case 'GREEN': return { text: 'Green Channel (Fast-Track Released)', style: 'bg-emerald-50 text-emerald-800 border-emerald-200', term: 'GREEN CHANNEL' };
       case 'YELLOW': return { text: 'Yellow Channel (Documentary Audit)', style: 'bg-amber-50 text-amber-800 border-amber-200', term: 'YELLOW CHANNEL' };
       case 'RED': return { text: 'Red Channel (Physical & Scan Required)', style: 'bg-rose-50 text-rose-800 border-rose-200 font-bold', term: 'RED CHANNEL' };
       case 'BLUE': return { text: 'Blue Channel (AEO Trusted Trader)', style: 'bg-blue-50 text-blue-800 border-blue-200', term: 'BLUE CHANNEL' };
@@ -141,9 +142,27 @@ export default function ShipmentDetailModal({ shipment, onClose, onTriggerAction
 
         </div>
 
-        {/* Footer with One-Click Actions */}
+        {/* Footer with Interactive State-Mutating Actions */}
         <div className="p-3.5 border-t border-slate-200 bg-white flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {shipment.customsChannel !== 'GREEN' && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (onTriggerAction) {
+                    onTriggerAction('EXPEDITE_CUSTOMS', {
+                      shipmentId: shipment.id,
+                      containerNumber: shipment.containerNumber
+                    });
+                  }
+                }}
+                className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-2xs"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Fast-Track Clearance</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => {
@@ -157,8 +176,9 @@ export default function ShipmentDetailModal({ shipment, onClose, onTriggerAction
               }}
               className="px-3 py-1.5 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-semibold transition"
             >
-              Request RRA Status Update
+              Request RRA Expedite
             </button>
+
             <button
               type="button"
               onClick={() => {

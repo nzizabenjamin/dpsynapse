@@ -11,22 +11,28 @@ import {
   Layers,
   ShieldCheck,
   Truck,
-  HelpCircle,
-  Clock,
-  Building2
+  Filter,
+  ArrowRight
 } from 'lucide-react';
 import LogisticsTermTooltip from './LogisticsTermTooltip';
 
-export default function AskSynapseDrawer({ isOpen, onClose, onAskAi, isAsking, aiResponse }) {
+export default function AskSynapseDrawer({ 
+  isOpen, 
+  onClose, 
+  onAskAi, 
+  isAsking, 
+  aiResponse,
+  onApplyFilter 
+}) {
   const [queryText, setQueryText] = useState('');
 
   if (!isOpen) return null;
 
   const quickPrompts = [
-    { text: "What is current truck turnaround at Masaka?", icon: Truck, term: 'TAT' },
-    { text: "Explain active bottlenecks and Rusumo border delays", icon: AlertTriangle, term: 'OSBP' },
-    { text: "Summarize Red Channel customs backlog", icon: ShieldCheck, term: 'RED CHANNEL' },
-    { text: "What is Cold Chain Zone D capacity and temp?", icon: Layers, term: 'REEFER' },
+    { text: "What is current truck turnaround at Masaka?", icon: Truck },
+    { text: "Explain active bottlenecks and Rusumo border delays", icon: AlertTriangle },
+    { text: "Summarize Red Channel customs backlog", icon: ShieldCheck },
+    { text: "What is Cold Chain Zone D capacity and temp?", icon: Layers },
   ];
 
   const suggestionChips = [
@@ -88,7 +94,7 @@ export default function AskSynapseDrawer({ isOpen, onClose, onAskAi, isAsking, a
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                 Recommended Operational Queries
               </span>
-              <span className="text-[10px] text-slate-400">Click to ask instantly</span>
+              <span className="text-[10px] text-slate-400">Click to ask & filter instantly</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {quickPrompts.map((p, idx) => {
@@ -113,7 +119,7 @@ export default function AskSynapseDrawer({ isOpen, onClose, onAskAi, isAsking, a
             <div className="bg-white border border-slate-200 rounded-md p-5 animate-pulse space-y-3 shadow-2xs">
               <div className="flex items-center gap-2 text-[#004B87] text-xs font-semibold">
                 <Sparkles className="w-4 h-4 animate-spin text-[#004B87]" />
-                <span>Synapse Operations Engine analyzing terminal telemetry...</span>
+                <span>Synapse Operations Engine evaluating terminal telemetry...</span>
               </div>
               <div className="h-3.5 bg-slate-200 rounded w-full"></div>
               <div className="h-3.5 bg-slate-200 rounded w-4/5"></div>
@@ -137,6 +143,29 @@ export default function AskSynapseDrawer({ isOpen, onClose, onAskAi, isAsking, a
               <div className="text-xs sm:text-sm text-slate-800 leading-relaxed bg-[#F8FAFC] p-3.5 rounded border border-slate-200">
                 {aiResponse.answer}
               </div>
+
+              {/* Optional 1-Click Filter Action Button if AI identified a target subset */}
+              {aiResponse.filterTrigger && (
+                <div className="bg-blue-50/80 border border-blue-200 rounded-md p-2.5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs text-[#004B87] font-semibold">
+                    <Filter className="w-3.5 h-3.5" />
+                    <span>Filter Active: {aiResponse.filterTrigger.label}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onApplyFilter) {
+                        onApplyFilter(aiResponse.filterTrigger);
+                      }
+                      onClose();
+                    }}
+                    className="px-3 py-1 rounded bg-[#004B87] hover:bg-[#003B6D] text-white text-xs font-semibold transition flex items-center gap-1 shadow-2xs"
+                  >
+                    <span>View in Manifest</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
 
               {/* Operational Findings */}
               {aiResponse.keyFindings && aiResponse.keyFindings.length > 0 && (
@@ -180,7 +209,7 @@ export default function AskSynapseDrawer({ isOpen, onClose, onAskAi, isAsking, a
               <Bot className="w-9 h-9 mx-auto mb-2 text-slate-300" />
               <p className="font-semibold text-slate-600">How can Synapse assist your shift today?</p>
               <p className="text-[11px] text-slate-400 mt-1">
-                Type an operational query below or select one of the suggested search chips.
+                Type an operational query below or click any of the suggestion chips.
               </p>
             </div>
           )}
