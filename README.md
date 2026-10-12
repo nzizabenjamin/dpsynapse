@@ -1,99 +1,69 @@
-# DP World Synapse — Terminal Operations & Logistics Intelligence Platform
-### DP World Kigali (Inland Dry Port & Warehousing Hub at Masaka, Rwanda)
-
-**DP World Synapse** is an enterprise-grade operations and logistics intelligence platform purpose-built for shift supervisors, terminal operations managers, and logistics leadership at DP World Kigali (Masaka Hub). It combines real-time dry port telemetry, customs channel clearance tracking, corridor fleet telematics, and an AI intelligence engine for automated operational briefings.
-
----
-
-## System Architecture
-
-```
-dpsynapse/
-├── db/                                # Part 1: PostgreSQL DDL Schema & Kigali Seed Data
-│   ├── 01_schema.sql                  # Strict snake_case tables & performance indexes
-│   └── 02_seed_data.sql               # Realistic freight data (Zones A-F, 30+ shipments, fleet)
-│
-├── backend/                           # Part 2: Spring Boot 3 REST API Backend (Java 22)
-│   ├── pom.xml
-│   ├── src/main/resources/application.yml  # Dual-profile config (local H2 / live PostgreSQL)
-│   └── src/main/java/com/dpworld/synapse/
-│       ├── controller/                # REST endpoints (/kpi, /warehouse-zones, /shipments, /fleet, /briefings, /ai)
-│       ├── service/                   # Business logic, KPI aggregations, and AI client
-│       ├── entity/                    # JPA Entities matching PostgreSQL schema
-│       └── repository/                # Spring Data JPA repositories
-│
-├── ai-service/                        # Part 3: Python FastAPI AI Intelligence Microservice
-│   ├── requirements.txt
-│   ├── app/
-│   │   ├── main.py                    # FastAPI server (port 8000)
-│   │   ├── briefing_engine.py         # 07:00 morning narrative operational briefing generator
-│   │   ├── query_engine.py            # "Ask Synapse" natural language Q&A engine
-│   │   └── prompt_templates.py        # Operations prompt engineering templates
-│   └── test_service.py                # Automated pytest suite (100% pass)
-│
-└── frontend/                          # Part 4: Enterprise Operations Dashboard (React + Vite + Tailwind)
-    ├── package.json
-    ├── tailwind.config.js             # DP World corporate navy/blue enterprise palette
-    └── src/
-        ├── components/                # Macro KPIs, Zone Map, Customs Matrix, Fleet Radar, Ask Synapse
-        ├── services/api.js            # REST API connector
-        └── App.jsx                    # Operations dashboard orchestration
-```
+# DP World Synapse: Cross-Departmental Operations & Logistics Intelligence Platform
+**Project Presentation & Technical Brief**  
+**Author:** Benjamin Nziza (Software Engineering Student)  
+**Target Deployment:** DP World Kigali — Masaka Inland Dry Port & Warehousing Hub  
 
 ---
 
-## Quick Start Guide
+## 1. Executive Summary & Project Vision
 
-### 1. Database Setup (PostgreSQL)
-In **pgAdmin** or `psql`:
-```bash
-# Create the database
-CREATE DATABASE dpsynapse;
+Modern inland dry ports and container freight stations manage complex multi-modal logistics ecosystems. At the **DP World Kigali Logistics Platform in Masaka**, operations span bonded and non-bonded warehousing, temperature-controlled cold-chain storage, Rwanda Revenue Authority (RRA) customs documentation, and regional long-haul transport corridors (such as Dar es Salaam and Mombasa).
 
-# Execute the schema and seed scripts
-psql -U postgres -d dpsynapse -f db/01_schema.sql
-psql -U postgres -d dpsynapse -f db/02_seed_data.sql
-```
+Traditionally, these core functions operate in isolated silos, requiring manual coordination, phone calls, and fragmented log sheets. **DP World Synapse** is engineered to eliminate these operational blind spots. It acts as a unified digital command center that bridges warehousing, customs clearance, and fleet transport into a single enterprise interface—empowering logistics teams, shift supervisors, and management to track cargo velocity, monitor zone density, and resolve bottlenecks efficiently.
 
 ---
 
-### 2. Run the Spring Boot Backend (Port 8080)
-```bash
-cd backend
-mvn spring-boot:run
-```
-- **API Base:** `http://localhost:8080`
-- **Swagger UI / OpenAPI Documentation:** `http://localhost:8080/swagger-ui.html`
-- **H2 Web Console (when using local profile):** `http://localhost:8080/h2-console`
+## 2. Core Operational Pillars
+
+The platform is structured around four foundational divisions that drive dry port operations at Masaka:
+
+1. **Warehousing & Contract Logistics:** Manages bonded CFS, non-bonded FMCG distribution, agri-commodities export hubs, and critical cold-chain pharmaceutical storage. Tracks cubic capacity, active pallet slots, and zone density percentages in real-time.
+2. **Customs Clearance & Documentation:** Integrates with RRA Single Customs Territory (SCT) workflows. Tracks the lifecycle of shipping manifests across regulatory channels (*Blue Fast-Track, Green, Yellow Document Audit, and Red Physical Scan*).
+3. **Regional Fleet & Transport Corridors:** Monitors long-haul transport telemetry across the Central Corridor (Tanzania) and Northern Corridor (Kenya), tracking border weighbridge stops, transit delays, and estimated arrival times.
+4. **Terminal Operations & Gate Management:** Captures ingress and egress telemetry at port gates, container handling equipment utilization, and truck turnaround times (TAT) against established SLAs.
 
 ---
 
-### 3. Run the AI Microservice (Port 8000)
-```bash
-cd ai-service
-.\.venv\Scripts\activate
-uvicorn app.main:app --port 8000 --reload
-```
-- **API Base:** `http://localhost:8000`
-- **Interactive OpenAPI Docs:** `http://localhost:8000/docs`
-- **Run Tests:** `pytest test_service.py -v`
+## 3. System Architecture & Tech Stack
+
+DP World Synapse is built on a robust, multi-tier enterprise architecture designed for high availability and clean separation of concerns:
+
+* **Frontend Layer (React + Tailwind CSS):** A responsive, single-page enterprise dashboard styled to match professional logistics portals. It utilizes clean corporate palettes (`#002D56` navy, `#F4F6F8` neutral backgrounds), traffic-light status badges, and interactive drill-down cards.
+* **Backend API Layer (Spring Boot / ASP.NET Core):** Exposes clean RESTful endpoints (`/api/v1/synapse/overview`, `/api/v1/synapse/warehouses`, `/api/v1/synapse/shipments/bottlenecks`) that handle secure data serialization and business logic.
+* **Database Layer (PostgreSQL):** A fully normalized relational database utilizing strict `snake_case` naming conventions. Key schema tables include:
+  * `warehouse_zones` (`zone_id`, `zone_code`, `zone_type`, `total_capacity_sqm`, `current_occupancy_sqm`, `status`)
+  * `shipments` (`shipment_id`, `container_number`, `client_name`, `cargo_type`, `customs_channel`, `customs_status`, `dwell_days`)
+  * `fleet_trips` (`trip_id`, `truck_plate`, `corridor_route`, `trip_status`, `estimated_eta`)
+  * `operational_metrics` (`metric_id`, `recorded_date`, `warehouse_utilization_percentage`, `active_fleet_count`)
+* **AI Intelligence Microservice (Python / LLM):** A lightweight service that ingests aggregated JSON operational metrics from the backend and interfaces with an LLM to generate automated shift briefings and natural language SQL queries.
 
 ---
 
-### 4. Run the Enterprise Operations Dashboard (Port 5173)
-```bash
-cd frontend
-npm run dev
-```
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+## 4. Multi-Departmental Workflow & Role-Based Interaction
+
+To ensure cross-departmental alignment, Synapse supports role-based access control (RBAC) and contextual action triggers:
+
+* **Role-Based Accounts:** Users operate under specific departmental profiles (e.g., *Warehouse Supervisor*, *Customs Clearance Clerk*, *Fleet Dispatcher*). 
+* **Contextual Action Triggers:** When an operational exception occurs—such as a customs hold or a cold-chain temperature warning—staff do not need to switch applications. Clicking action buttons like **"Request RRA Status Update"** or **"Notify Customs Team"** automatically dispatches contextual notifications with container IDs and zone codes to the responsible department queue.
+* **Supervisor Escalation:** Supervisors retain elevated permissions to review multi-zone congestion, authorize storage space reallocations, and resolve critical border transit holds.
 
 ---
 
-## Key Features & Capabilities
+## 5. AI Intelligence Engine
 
-1. **Terminal Operations Macro KPI Strip:** Real-time counters for daily TEU throughput (Inbound/Outbound), Masaka Gate Truck Turnaround Time (TAT < 45m SLA), dry port density, and RRA customs clearance efficiency.
-2. **07:00 Shift Operations Briefing:** Operational narrative briefing synthesized by the AI microservice highlighting corridor splits, active bottlenecks, and tactical recommendations.
-3. **Interactive 2D Warehouse & Yard Zone Matrix:** Live capacity density and thermal sensor telemetry across Zone A (Bonded CFS), Zone B (FMCG), Zone C (Agri-Export), Zone D (Cold Chain Pharma `+3.4°C`), Zone E (HAZMAT), and Zone F (Empty Yard).
-4. **RRA Customs Clearance Matrix:** Single Customs Territory (SCT) channel matrix (Green, Yellow, Red, Blue) with filterable container shipment manifest.
-5. **Corridor Fleet Transit Radar:** Central Corridor (Dar es Salaam -> Rusumo) vs Northern Corridor (Mombasa -> Kagitumba) truck tracking and border dwell telematics.
-6. **"Ask Synapse" AI Operations Assistant:** Natural language query drawer providing instant answers grounded on live dry port telemetry.
+The platform incorporates two primary AI capabilities designed to reduce administrative friction for shift personnel:
+
+* **Automated Shift & Operational Briefings:** The AI intelligence microservice automatically analyzes daily aggregated metrics to compile structured narrative summaries highlighting throughput performance, border wait times, and recommended corrective actions.
+* **"Ask Synapse" Natural Language Querying:** Staff can type plain-English questions into the search box or click suggested query chips (e.g., *"Show me all containers waiting over 5 days in bonded storage"*). The AI parses the prompt and instantly filters the relational dataset to return the precise records.
+
+---
+
+## 6. Full Project Demo Guide for Reviewers
+
+Follow these steps to evaluate the fully functional prototype:
+
+1. **Access the Live Enterprise Dashboard:** Open the deployed prototype via the provided link to view the live corporate layout and macro KPI summary row.
+2. **Test Interactive Zone Filtering:** Click on any card within the **Storage & Yard Zone Matrix** (e.g., *Cold-Chain Pharma* or *Bonded CFS*). Observe how the main shipment manifest table dynamically filters to display only relevant items.
+3. **Explore RRA Customs Channels:** Use the interactive toggle tabs (*All Channels*, *Green*, *Yellow*, *Red*, *Blue*) to filter manifests by regulatory status.
+4. **Execute Action Triggers:** Click an action button next to a flagged bottleneck row to verify the instant success toast notification and status update handler.
+5. **Test the AI Query Box:** Type a query or click one of the quick-suggestion chips in the "Ask Synapse" search bar to test real-time data filtering.
