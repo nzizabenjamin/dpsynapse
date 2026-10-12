@@ -46,3 +46,4 @@ yarn-error.log*
 
 # Agent Customizations & Temp
 .agents/
+implementation_plan.md
